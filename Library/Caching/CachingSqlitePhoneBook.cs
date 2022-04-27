@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Dapper;
 using Microsoft.Data.Sqlite;
 
 namespace Library.Caching
 {
-    public class CachingSqlitePhoneBook : IPhoneBook, IDisposable, IAsyncDisposable
+    public class CachingSqlitePhoneBook : DisposableWithCancellation, IPhoneBook
     {
         private readonly IPhoneBook inner;
         private readonly SqliteConnection connection;
@@ -38,7 +40,9 @@ namespace Library.Caching
             return new(inner, connection);
         }
 
-        public async IAsyncEnumerable<Region> GetAllRegionsAsync()
+        public async IAsyncEnumerable<Region> GetAllRegionsAsync(
+            [EnumeratorCancellation] CancellationToken cancellationToken = default
+        )
         {
             var regions = connection.Query<Region>(
                 "SELECT Url, DisplayName FROM Region"

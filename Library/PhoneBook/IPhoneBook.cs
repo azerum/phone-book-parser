@@ -3,7 +3,7 @@ using System.Threading;
 
 namespace Library
 {
-    /// <summary>
+    /// <remarks>
     /// <para>
     /// All implementation of this interface are NOT thread-safe, meaning that:
     /// </para>
@@ -66,7 +66,7 @@ namespace Library
     ///     Console.WriteLine(cities.Current);
     /// }
     /// </code>
-    /// </summary>
+    /// </remarks>
     public interface IPhoneBook
     {
         IAsyncEnumerable<Region> GetAllRegionsAsync(
