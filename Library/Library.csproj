@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="PhoneBooks\" />
+    <None Remove="PhoneBooks\Parsing\" />
+    <None Remove="AngleSharp" />
+    <None Remove="AngleSharp.Io" />
+    <None Remove="System.Interactive.Async" />
+    <None Remove="PhoneBooks\Caching\" />
+    <None Remove="Microsoft.Data.Sqlite" />
+    <None Remove="Microsoft.EntityFrameworkCore.Sqlite" />
+    <None Remove="PhoneBooks\Caching\CachedModels\" />
+    <None Remove="Parsing\" />
+    <None Remove="Caching\" />
+    <None Remove="Caching\CachedModels\" />
+    <None Remove="AutoMapper" />
+    <None Remove="PhoneBook\Models\" />
+    <None Remove="Dapper" />
+    <None Remove="Dapper.SqlBuilder" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="PhoneBook\" />
+    <Folder Include="Parsing\" />
+    <Folder Include="Caching\" />
+    <Folder Include="PhoneBook\Models\" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="AngleSharp" Version="0.16.1" />
+    <PackageReference Include="AngleSharp.Io" Version="0.16.0" />
+    <PackageReference Include="System.Interactive.Async" Version="6.0.1" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="6.0.4" />
+    <PackageReference Include="Dapper" Version="2.0.123" />
+  </ItemGroup>
+</Project>
