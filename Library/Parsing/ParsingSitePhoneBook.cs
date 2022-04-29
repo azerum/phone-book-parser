@@ -48,11 +48,11 @@ namespace Library.Parsing
             context = BrowsingContext.New(config);
         }
 
-        public async IAsyncEnumerable<Region> GetAllRegionsAsync(
+        public async IAsyncEnumerable<Region> GetAllRegions(
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            var document = await OpenDocumentOrThrowAsync(
+            var document = await OpenDocumentOrThrow(
                 regionsPageUrl,
                 cancellationToken
             );
@@ -71,12 +71,12 @@ namespace Library.Parsing
             }
         }
 
-        public async IAsyncEnumerable<Province> GetAllProvincesInRegionAsync(
+        public async IAsyncEnumerable<Province> GetAllProvincesInRegion(
             Region region,
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            var document = await OpenDocumentOrThrowAsync(
+            var document = await OpenDocumentOrThrow(
                 region.Url,
                 cancellationToken
             );
@@ -95,12 +95,12 @@ namespace Library.Parsing
             }
         }
 
-        public async IAsyncEnumerable<City> GetAllCitiesInProvinceAsync(
+        public async IAsyncEnumerable<City> GetAllCitiesInProvince(
             Province province,
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            var document = await OpenDocumentOrThrowAsync(
+            var document = await OpenDocumentOrThrow(
                 province.Url,
                 cancellationToken
             );
@@ -124,53 +124,51 @@ namespace Library.Parsing
             return anchor.QuerySelector("h3")!.TextContent;
         }
 
-        public IAsyncEnumerable<FoundRecord> SearchInAllAsync(
+        public IAsyncEnumerable<FoundRecord> SearchInAll(
             SearchCriteria criteria,
             CancellationToken cancellationToken = default
         )
         {
-            var regions = GetAllRegionsAsync(cancellationToken);
+            var regions = GetAllRegions(cancellationToken);
 
             return regions.SelectAsyncAndMerge(
-                r => SearchInRegionAsync(r, criteria, cancellationToken)
+                r => SearchInRegion(r, criteria, cancellationToken)
             );
         }
 
-        public IAsyncEnumerable<FoundRecord> SearchInRegionAsync(
+        public IAsyncEnumerable<FoundRecord> SearchInRegion(
             Region region,
             SearchCriteria criteria,
             CancellationToken cancellationToken = default
         )
         {
-            var provinces =
-                GetAllProvincesInRegionAsync(region, cancellationToken);
+            var provinces = GetAllProvincesInRegion(region, cancellationToken);
 
             return provinces.SelectAsyncAndMerge(
-                p => SearchInProvinceAsync(p, criteria, cancellationToken)
+                p => SearchInProvince(p, criteria, cancellationToken)
             );
         }
 
-        public IAsyncEnumerable<FoundRecord> SearchInProvinceAsync(
+        public IAsyncEnumerable<FoundRecord> SearchInProvince(
             Province province,
             SearchCriteria criteria,
             CancellationToken cancellationToken = default
         )
         {
-            var cities =
-                GetAllCitiesInProvinceAsync(province, cancellationToken);
+            var cities = GetAllCitiesInProvince(province, cancellationToken);
 
             return cities.SelectAsyncAndMerge(
-                c => SearchInCityAsync(c, criteria, cancellationToken)
+                c => SearchInCity(c, criteria, cancellationToken)
             );
         }
 
-        public async IAsyncEnumerable<FoundRecord> SearchInCityAsync(
+        public async IAsyncEnumerable<FoundRecord> SearchInCity(
             City city,
             SearchCriteria criteria,
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            var document = await OpenDocumentOrThrowAsync(
+            var document = await OpenDocumentOrThrow(
                 city.Url,
                 cancellationToken
             );
@@ -217,7 +215,7 @@ namespace Library.Parsing
             }
         }
 
-        private async Task<IDocument> OpenDocumentOrThrowAsync(
+        private async Task<IDocument> OpenDocumentOrThrow(
             string url,
             CancellationToken cancellationToken = default
         )
@@ -228,7 +226,7 @@ namespace Library.Parsing
             return document;
         }
 
-        private void ThrowIfBadStatusCode(IDocument document)
+        private static void ThrowIfBadStatusCode(IDocument document)
         {
             int statusCode = (int)document.StatusCode;
 

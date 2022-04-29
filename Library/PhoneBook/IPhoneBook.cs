@@ -69,38 +69,38 @@ namespace Library
     /// </remarks>
     public interface IPhoneBook
     {
-        IAsyncEnumerable<Region> GetAllRegionsAsync(
+        IAsyncEnumerable<Region> GetAllRegions(
             CancellationToken cancellationToken = default
         );
 
-        IAsyncEnumerable<Province> GetAllProvincesInRegionAsync(
+        IAsyncEnumerable<Province> GetAllProvincesInRegion(
             Region region,
             CancellationToken cancellationToken = default
         );
 
-        IAsyncEnumerable<City> GetAllCitiesInProvinceAsync(
+        IAsyncEnumerable<City> GetAllCitiesInProvince(
             Province province,
             CancellationToken cancellationToken = default
         );
 
-        IAsyncEnumerable<FoundRecord> SearchInAllAsync(
+        IAsyncEnumerable<FoundRecord> SearchInAll(
             SearchCriteria criteria,
             CancellationToken cancellationToken = default
         );
 
-        IAsyncEnumerable<FoundRecord> SearchInRegionAsync(
+        IAsyncEnumerable<FoundRecord> SearchInRegion(
             Region region,
             SearchCriteria criteria,
             CancellationToken cancellationToken = default
         );
 
-        IAsyncEnumerable<FoundRecord> SearchInProvinceAsync(
+        IAsyncEnumerable<FoundRecord> SearchInProvince(
             Province province,
             SearchCriteria criteria,
             CancellationToken cancellationToken = default
         );
 
-        IAsyncEnumerable<FoundRecord> SearchInCityAsync(
+        IAsyncEnumerable<FoundRecord> SearchInCity(
             City city,
             SearchCriteria criteria,
             CancellationToken cancellationToken = default
