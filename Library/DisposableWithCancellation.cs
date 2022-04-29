@@ -7,6 +7,7 @@ namespace Library
     public abstract class DisposableWithCancellation : IDisposable, IAsyncDisposable
     {
         private readonly CancellationTokenSource source = new();
+        protected CancellationToken DisposeToken => source.Token;
 
         public void Dispose()
         {
