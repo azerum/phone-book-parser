@@ -11,12 +11,6 @@ namespace Library.Caching.DbTables
     {
         public override string TableName => "Cities";
 
-        protected override string InsertSql =>
-        $@"
-        INSERT INTO {TableName} (Url, DisplayName, ProvinceId)
-        VALUES (@Url, @DisplayName, @ProvinceId)
-        ";
-
         public CitiesTable(CacheDb db) : base(db) { }
 
         public override void EnsureIsCreated(
@@ -49,6 +43,12 @@ namespace Library.Caching.DbTables
             command.ExecuteNonQuery();
         }
 
+        protected override string InsertSql =>
+        $@"
+        INSERT INTO {TableName} (Url, DisplayName, ProvinceId)
+        VALUES (@Url, @DisplayName, @ProvinceId)
+        ";
+
         protected override async ValueTask<object> MakeInsertParameters(City obj)
         {
             int provinceId = await db.Provinces.SelectIdOrInsert(obj.Province);
@@ -66,14 +66,71 @@ namespace Library.Caching.DbTables
             string sql =
             $@"
             SELECT
-                Url,
-                DisplayName
-            FROM {TableName}
+                c.Url as CUrl,
+                c.DisplayName as CDisplayName,
+                p.Url as PUrl,
+                p.DisplayName  as PDisplayName,
+                r.Url as RUrl,
+                r.DisplayName as RDisplayName
+            FROM
+                {TableName} as c
+            INNER JOIN
+                {db.Provinces.TableName} as p
+            ON
+                c.ProvinceId = p.Id
+            INNER JOIN
+                {db.Regions.TableName} as r
+            ON
+                p.RegionId = r.Id
             ";
 
             var dynamics = await db.Connection.QueryAsync(sql);
 
-            return dynamics.Select(d => new City(d.Url, d.DisplayName));
+            return dynamics.Select(d =>
+            {
+                Region region = new(d.RUrl, d.RDisplayName);
+                Province province = new(region, d.PUrl, d.PDisplayName);
+                City city = new(province, d.CUrl, d.CDisplayName);
+
+                return city;
+            });
+        }
+
+        public async Task<IEnumerable<City>> SelectAllInRegion(Region region)
+        {
+            string sql =
+            $@"
+            SELECT
+                c.Url as CUrl,
+                c.DisplayName as CDisplayName,
+                p.Url as PUrl,
+                p.DisplayName  as PDisplayName,
+                r.Url as RUrl,
+                r.DisplayName as RDisplayName
+            FROM
+                {TableName} as c
+            INNER JOIN
+                {db.Provinces.TableName} as p
+            ON
+                c.ProvinceId = p.Id
+            INNER JOIN
+                {db.Regions.TableName} as r
+            ON
+                p.RegionId = r.Id
+            WHERE
+                r.DisplayName = @DisplayName
+            ";
+
+            var dynamics = await db.Connection.QueryAsync(sql, region);
+
+            return dynamics.Select(d =>
+            {
+                Region region = new(d.RUrl, d.RDisplayName);
+                Province province = new(region, d.PUrl, d.PDisplayName);
+                City city = new(province, d.CUrl, d.CDisplayName);
+
+                return city;
+            });
         }
 
         public async Task<IEnumerable<City>> SelectAllInProvince(Province province)
@@ -95,11 +152,6 @@ namespace Library.Caching.DbTables
             var dynamics = await db.Connection.QueryAsync(sql, province);
 
             return dynamics.Select(d => new City(province, d.Url, d.DisplayName));
-        }
-
-        private IEnumerable<City> FromDynamics(IEnumerable<dynamic> dynamics)
-        {
-
         }
     }
 }

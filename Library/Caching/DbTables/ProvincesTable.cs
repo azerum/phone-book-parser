@@ -10,12 +10,6 @@ namespace Library.Caching.DbTables
     {
         public override string TableName => "Provinces";
 
-        protected override string InsertSql =>
-        $@"
-        INSERT INTO {TableName} (Url, DisplayName, RegionId)
-        VALUES (@Url, @DisplayName, @RegionId)
-        ";
-
         public ProvincesTable(CacheDb db) : base(db) { }
 
         public override void EnsureIsCreated(
@@ -47,6 +41,12 @@ namespace Library.Caching.DbTables
 
             command.ExecuteNonQuery();
         }
+
+        protected override string InsertSql =>
+        $@"
+        INSERT INTO {TableName} (Url, DisplayName, RegionId)
+        VALUES (@Url, @DisplayName, @RegionId)
+        ";
 
         protected override async ValueTask<object> MakeInsertParameters(Province obj)
         {

@@ -26,10 +26,7 @@ namespace Library.Caching
             string connectionString
         )
         {
-            SqliteConnection connection = new(connectionString);
-            connection.Open();
-
-            CacheDb db = new(connection);
+            var db = CacheDb.Open(connectionString);
             db.EnsureAllTablesAreCreated();
 
             return new(inner, db);
@@ -69,6 +66,7 @@ namespace Library.Caching
         )
         {
             var provinces = await db.Provinces.SelectAllInRegion(region);
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (provinces.Any())
             {
@@ -100,6 +98,7 @@ namespace Library.Caching
         )
         {
             var cities = await db.Cities.SelectAllInProvince(province);
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (cities.Any())
             {
@@ -125,21 +124,46 @@ namespace Library.Caching
             await db.Cities.InsertMany(toInsert, cancellationToken);
         }
 
-        public IAsyncEnumerable<FoundRecord> SearchInAll(
+        public async IAsyncEnumerable<FoundRecord> SearchInAll(
             SearchCriteria criteria,
-            CancellationToken cancellationToken = default
+            [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            throw new NotImplementedException();
+            var citiesEnumerable = await db.Cities.SelectAll();
+            var cities = citiesEnumerable.ToAsyncEnumerable();
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (!citiesEnumerable.Any())
+            {
+                cities = inner.GetAllRegions(cancellationToken)
+                    .SelectAsyncAndMerge(r => inner.GetAllProvincesInRegion(r, cancellationToken))
+                    .SelectAsyncAndMerge(p => inner.GetAllCitiesInProvince(p, cancellationToken));
+            }
+
+            var results = cities.SelectAsyncAndMerge(
+                c => inner.SearchInCity(c, criteria, cancellationToken)
+            );
+
+            await foreach (FoundRecord r in results)
+            {
+                yield return r;
+            }
         }
 
-        public IAsyncEnumerable<FoundRecord> SearchInRegion(
+        public async IAsyncEnumerable<FoundRecord> SearchInRegion(
             Region region,
             SearchCriteria criteria,
-            CancellationToken cancellationToken = default
+            [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            throw new NotImplementedException();
+            var citiesEnumerable = await db.Cities.SelectAllInRegion(region);
+            var cities = citiesEnumerable.ToAsyncEnumerable();
+
+            if (!citiesEnumerable.Any())
+            {
+
+            }
         }
 
         public IAsyncEnumerable<FoundRecord> SearchInProvince(
@@ -157,7 +181,7 @@ namespace Library.Caching
             CancellationToken cancellationToken = default
         )
         {
-            throw new NotImplementedException();
+            return inner.SearchInCity(city, criteria, cancellationToken);
         }
     }
 }
