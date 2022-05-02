@@ -1,41 +1,41 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using Microsoft.Data.Sqlite;
 
 namespace Library.Caching
 {
     public class CachingSqlitePhoneBook : IPhoneBook
     {
         private readonly IPhoneBook inner;
-        private readonly CacheDb db;
+        private readonly string connectionString;
 
         public CachingSqlitePhoneBook(
-            IPhoneBook inner,
-            CacheDb db
-        )
-        {
-            this.inner = inner;
-            this.db = db;
-        }
-
-        public static CachingSqlitePhoneBook Create(
             IPhoneBook inner,
             string connectionString
         )
         {
-            var db = CacheDb.Open(connectionString);
+            this.inner = inner;
+            this.connectionString = connectionString;
+        }
+
+        public static CachingSqlitePhoneBook Open(
+            IPhoneBook inner,
+            string connectionString
+        )
+        {
+            using var db = CacheDb.Open(connectionString);
             db.EnsureAllTablesAreCreated();
 
-            return new(inner, db);
+            return new(inner, connectionString);
         }
 
         public async IAsyncEnumerable<Region> GetAllRegions(
-            [EnumeratorCancellation] CancellationToken cancellationToken
+            [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            await using var db = OpenDb();
+
             var regions = await db.Regions.SelectAll();
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -65,6 +65,8 @@ namespace Library.Caching
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            await using var db = OpenDb();
+
             var provinces = await db.Provinces.SelectAllInRegion(region);
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -89,7 +91,7 @@ namespace Library.Caching
                 yield return p;
             }
 
-            await db.Provinces.InsertMany(provinces, cancellationToken);
+            await db.Provinces.InsertMany(toInsert, cancellationToken);
         }
 
         public async IAsyncEnumerable<City> GetAllCitiesInProvince(
@@ -97,6 +99,8 @@ namespace Library.Caching
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            await using var db = OpenDb();
+
             var cities = await db.Cities.SelectAllInProvince(province);
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -129,6 +133,8 @@ namespace Library.Caching
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            await using var db = OpenDb();
+
             var citiesEnumerable = await db.Cities.SelectAll();
             var cities = citiesEnumerable.ToAsyncEnumerable();
 
@@ -136,9 +142,9 @@ namespace Library.Caching
 
             if (!citiesEnumerable.Any())
             {
-                cities = inner.GetAllRegions(cancellationToken)
-                    .SelectAsyncAndMerge(r => inner.GetAllProvincesInRegion(r, cancellationToken))
-                    .SelectAsyncAndMerge(p => inner.GetAllCitiesInProvince(p, cancellationToken));
+                cities = GetAllRegions(cancellationToken)
+                    .SelectAsyncAndMerge(r => GetAllProvincesInRegion(r, cancellationToken))
+                    .SelectAsyncAndMerge(p => GetAllCitiesInProvince(p, cancellationToken));
             }
 
             var results = cities.SelectAsyncAndMerge(
@@ -157,22 +163,51 @@ namespace Library.Caching
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            await using var db = OpenDb();
+
             var citiesEnumerable = await db.Cities.SelectAllInRegion(region);
             var cities = citiesEnumerable.ToAsyncEnumerable();
 
             if (!citiesEnumerable.Any())
             {
+                cities = GetAllProvincesInRegion(region, cancellationToken)
+                    .SelectAsyncAndMerge(p => GetAllCitiesInProvince(p, cancellationToken));
+            }
 
+            var results = cities.SelectAsyncAndMerge(
+                c => inner.SearchInCity(c, criteria, cancellationToken)
+            );
+
+            await foreach (FoundRecord r in results)
+            {
+                yield return r;
             }
         }
 
-        public IAsyncEnumerable<FoundRecord> SearchInProvince(
+        public async IAsyncEnumerable<FoundRecord> SearchInProvince(
             Province province,
             SearchCriteria criteria,
-            CancellationToken cancellationToken = default
+            [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            throw new NotImplementedException();
+            await using var db = OpenDb();
+
+            var citiesEnumerable = await db.Cities.SelectAllInProvince(province);
+            var cities = citiesEnumerable.ToAsyncEnumerable();
+
+            if (!citiesEnumerable.Any())
+            {
+                cities = GetAllCitiesInProvince(province, cancellationToken);
+            }
+
+            var results = cities.SelectAsyncAndMerge(
+                c => inner.SearchInCity(c, criteria, cancellationToken)
+            );
+
+            await foreach (FoundRecord r in results)
+            {
+                yield return r;
+            }
         }
 
         public IAsyncEnumerable<FoundRecord> SearchInCity(
@@ -182,6 +217,11 @@ namespace Library.Caching
         )
         {
             return inner.SearchInCity(city, criteria, cancellationToken);
+        }
+
+        private CacheDb OpenDb()
+        {
+            return CacheDb.Open(connectionString);
         }
     }
 }

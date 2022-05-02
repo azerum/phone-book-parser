@@ -12,10 +12,12 @@ namespace Library.Caching.DbTables
         protected abstract string InsertSql { get; }
 
         protected readonly CacheDb db;
+        protected readonly SqliteConnection connection;
 
-        public DbTable(CacheDb db)
+        public DbTable(CacheDb db, SqliteConnection connection)
         {
             this.db = db;
+            this.connection = connection;
         }
 
         public abstract void EnsureIsCreated(
@@ -34,7 +36,7 @@ namespace Library.Caching.DbTables
             WHERE DisplayName = @DisplayName
             ";
 
-            int? id = await db.Connection.ExecuteScalarAsync<int?>(
+            int? id = await connection.ExecuteScalarAsync<int?>(
                 select,
                 new { obj.DisplayName },
                 transaction
@@ -53,7 +55,7 @@ namespace Library.Caching.DbTables
 
             var param = await MakeInsertParameters(obj);
 
-            return await db.Connection.ExecuteScalarAsync<int>(
+            return await connection.ExecuteScalarAsync<int>(
                 insertAndGetId,
                 param,
                 transaction
@@ -64,7 +66,7 @@ namespace Library.Caching.DbTables
         {
             var param = await MakeInsertParameters(obj);
 
-            _ = await db.Connection.ExecuteAsync(
+            _ = await connection.ExecuteAsync(
                 InsertSql,
                 param,
                 transaction
@@ -76,7 +78,7 @@ namespace Library.Caching.DbTables
             CancellationToken cancellationToken = default
         )
         {
-            var transaction = db.Connection.BeginTransaction();
+            var transaction = connection.BeginTransaction();
 
             try
             {

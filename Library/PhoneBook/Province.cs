@@ -13,7 +13,7 @@ namespace Library
         }
 
         public override string ToString()
-            => $"{base.ToString()}, {DisplayName}";
+            => $"{Region}, {DisplayName}";
 
         public bool Equals(Province? other)
         {

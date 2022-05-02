@@ -11,13 +11,14 @@ namespace Library.Caching.DbTables
     {
         public override string TableName => "Regions";
 
-        public RegionsTable(CacheDb db) : base(db) { }
+        public RegionsTable(CacheDb db, SqliteConnection connection)
+            : base(db, connection) { }
 
         public override void EnsureIsCreated(
             SqliteTransaction? transaction = null
         )
         {
-            var command = db.Connection.CreateCommand();
+            var command = connection.CreateCommand();
             command.Transaction = transaction;
 
             command.CommandText =
@@ -56,7 +57,7 @@ namespace Library.Caching.DbTables
             SqliteTransaction? transaction = null
         )
         {
-            var dynamics = await db.Connection.QueryAsync(
+            var dynamics = await connection.QueryAsync(
                 $"SELECT Url, DisplayName FROM {TableName}",
                 transaction
             );

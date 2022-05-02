@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
@@ -11,13 +10,14 @@ namespace Library.Caching.DbTables
     {
         public override string TableName => "Cities";
 
-        public CitiesTable(CacheDb db) : base(db) { }
+        public CitiesTable(CacheDb db, SqliteConnection connection)
+            : base(db, connection) { }
 
         public override void EnsureIsCreated(
             SqliteTransaction? transaction = null
         )
         {
-            var command = db.Connection.CreateCommand();
+            var command = connection.CreateCommand();
             command.Transaction = transaction;
 
             command.CommandText =
@@ -84,7 +84,7 @@ namespace Library.Caching.DbTables
                 p.RegionId = r.Id
             ";
 
-            var dynamics = await db.Connection.QueryAsync(sql);
+            var dynamics = await connection.QueryAsync(sql);
 
             return dynamics.Select(d =>
             {
@@ -121,7 +121,7 @@ namespace Library.Caching.DbTables
                 r.DisplayName = @DisplayName
             ";
 
-            var dynamics = await db.Connection.QueryAsync(sql, region);
+            var dynamics = await connection.QueryAsync(sql, region);
 
             return dynamics.Select(d =>
             {
@@ -149,7 +149,7 @@ namespace Library.Caching.DbTables
                 p.DisplayName = @DisplayName
             ";
 
-            var dynamics = await db.Connection.QueryAsync(sql, province);
+            var dynamics = await connection.QueryAsync(sql, province);
 
             return dynamics.Select(d => new City(province, d.Url, d.DisplayName));
         }

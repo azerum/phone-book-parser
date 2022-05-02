@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using Library;
+﻿using System.Threading.Tasks;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
 
@@ -12,15 +10,8 @@ namespace Tests
         [Test]
         public async Task SelectAllInRegion_Works()
         {
-            Region region = new("https://example.com", "Example");
-
-            List<Province> expectedProvinces = new(2);
-
-            for (int i = 0; i < expectedProvinces.Capacity; ++i)
-            {
-                Province p = new(region, $"https://example.com/{i}", $"Province{i}");
-                expectedProvinces.Add(p);
-            }
+            var (region, expectedProvinces, _) =
+                CreateRegionWithProvincesAndCities("Region", 2, 0);
 
             await db.Provinces.InsertMany(expectedProvinces);
 

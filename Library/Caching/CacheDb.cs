@@ -7,19 +7,48 @@ namespace Library.Caching
 {
     public class CacheDb : IAsyncDisposable, IDisposable
     {
-        public SqliteConnection Connection { get; }
+        private readonly SqliteConnection connection;
+        private bool disposed;
 
-        public RegionsTable Regions { get; }
-        public ProvincesTable Provinces { get; }
-        public CitiesTable Cities { get; }
+        private readonly RegionsTable regions;
+        private readonly ProvincesTable provinces;
+        private readonly CitiesTable cities;
+
+        public RegionsTable Regions
+        {
+            get
+            {
+                ThrowIfDisposed();
+                return regions;
+            }
+        }
+
+        public ProvincesTable Provinces
+        {
+            get
+            {
+                ThrowIfDisposed();
+                return provinces;
+            }
+        }
+
+        public CitiesTable Cities
+        {
+            get
+            {
+                ThrowIfDisposed();
+                return cities;
+            }
+        }
 
         private CacheDb(SqliteConnection connection)
         {
-            Connection = connection;
+            this.connection = connection;
+            disposed = false;
 
-            Regions = new(this);
-            Provinces = new(this);
-            Cities = new(this);
+            regions = new(this, connection);
+            provinces = new(this, connection);
+            cities = new(this, connection);
         }
 
         public static CacheDb Open(string connectionString)
@@ -32,13 +61,15 @@ namespace Library.Caching
 
         public void EnsureAllTablesAreCreated()
         {
-            var transaction = Connection.BeginTransaction();
+            ThrowIfDisposed();
+
+            var transaction = connection.BeginTransaction();
 
             try
             {
-                Regions.EnsureIsCreated(transaction);
-                Provinces.EnsureIsCreated(transaction);
-                Cities.EnsureIsCreated(transaction);
+                regions.EnsureIsCreated(transaction);
+                provinces.EnsureIsCreated(transaction);
+                cities.EnsureIsCreated(transaction);
 
                 transaction.Commit();
             }
@@ -51,17 +82,42 @@ namespace Library.Caching
 
         public void Close()
         {
-            Connection.Close();
+            connection.Close();
+        }
+
+        public Task CloseAsync()
+        {
+            return connection.CloseAsync();
         }
 
         public void Dispose()
         {
-            Connection.Dispose();
+            if (disposed)
+            {
+                return;
+            }
+
+            disposed = true;
+            Close();
         }
 
         public ValueTask DisposeAsync()
         {
-            return Connection.DisposeAsync();
+            if (disposed)
+            {
+                return ValueTask.CompletedTask;
+            }
+
+            disposed = true;
+            return new(CloseAsync());
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (disposed)
+            {
+                throw new ObjectDisposedException("CacheDb");
+            }
         }
     }
 }

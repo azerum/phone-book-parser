@@ -10,13 +10,14 @@ namespace Library.Caching.DbTables
     {
         public override string TableName => "Provinces";
 
-        public ProvincesTable(CacheDb db) : base(db) { }
+        public ProvincesTable(CacheDb db, SqliteConnection connection)
+            : base(db, connection) { }
 
         public override void EnsureIsCreated(
             SqliteTransaction? transaction = null
         )
         {
-            var command = db.Connection.CreateCommand();
+            var command = connection.CreateCommand();
             command.Transaction = transaction;
 
             command.CommandText =
@@ -76,7 +77,7 @@ namespace Library.Caching.DbTables
                 r.DisplayName = @DisplayName
             ";
 
-            var dynamics = await db.Connection.QueryAsync(sql, region);
+            var dynamics = await connection.QueryAsync(sql, region);
 
             return dynamics.Select(d => new Province(region, d.Url, d.DisplayName));
         }
