@@ -5,7 +5,7 @@ namespace Tests
 {
     public static class FileExtensions
     {
-        public static void TruncateIfExists(string path)
+        public static void Truncate(string path)
         {
             if (File.Exists(path))
             {

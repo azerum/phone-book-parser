@@ -1,7 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
+using Dapper;
+using Microsoft.Data.Sqlite;
 
 namespace Library.Caching
 {
@@ -10,7 +14,7 @@ namespace Library.Caching
         private readonly IPhoneBook inner;
         private readonly string connectionString;
 
-        public CachingSqlitePhoneBook(
+        private CachingSqlitePhoneBook(
             IPhoneBook inner,
             string connectionString
         )
@@ -24,8 +28,10 @@ namespace Library.Caching
             string connectionString
         )
         {
-            using var db = CacheDb.Open(connectionString);
-            db.EnsureAllTablesAreCreated();
+            using SqliteConnection connection = new(connectionString);
+
+            connection.Open();
+            connection.EnsureAllTablesAreCreated();
 
             return new(inner, connectionString);
         }
@@ -34,14 +40,19 @@ namespace Library.Caching
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            await using var db = OpenDb();
+            await using var connection = OpenConnection();
 
-            var regions = await db.Regions.SelectAll();
-            cancellationToken.ThrowIfCancellationRequested();
+            int allRegionsAreCached = await connection.ExecuteScalarAsync<int>(@"
+                SELECT AllRegionsAreCached
+                FROM Root
+                WHERE Id = 1
+            ");
 
-            if (regions.Any())
+            if (allRegionsAreCached == 1)
             {
-                foreach (Region r in regions)
+                var cachedRegions = await SelectAllRegions(connection);
+
+                foreach (Region r in cachedRegions)
                 {
                     yield return r;
                 }
@@ -49,15 +60,112 @@ namespace Library.Caching
                 yield break;
             }
 
+            var regions = inner.GetAllRegions(cancellationToken);
             List<Region> toInsert = new();
 
-            await foreach (Region r in inner.GetAllRegions(cancellationToken))
+            await foreach (Region r in regions)
             {
                 toInsert.Add(r);
                 yield return r;
             }
 
-            await db.Regions.InsertMany(toInsert, cancellationToken);
+            var transaction = connection.BeginTransaction();
+
+            string insertSql =
+            @"
+            INSERT INTO Regions (Url, DisplayName)
+            VALUES (@Url, @DisplayName)
+            ";
+
+            string updateSql =
+            @"
+            UPDATE Root
+            SET AllRegionsAreCached = 1
+            WHERE Id = 1
+            ";
+
+            try
+            {
+                foreach (Region r in toInsert)
+                {
+                    await connection.ExecuteAsync(insertSql, r, transaction);
+                }
+
+                await connection.ExecuteAsync(updateSql, transaction);
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+            }
+        }
+
+        private static async Task<IEnumerable<Region>> SelectAllRegions(
+            SqliteConnection connection
+        )
+        {
+            string sql =
+            @"
+            SELECT Url, DisplayName
+            FROM Regions
+            ";
+
+            var dynamics = await connection.QueryAsync(sql);
+
+            return dynamics.Select(d => new Region(d.Url, d.DisplayName));
+        }
+
+        private static Task Insert(
+            SqliteConnection connection,
+            Region region,
+            SqliteTransaction? transaction = null
+        )
+        {
+            string sql =
+            @"
+            INSERT INTO Regions (Url, DisplayName)
+            VALUES (@Url, @DisplayName)
+            ";
+
+            return connection.ExecuteAsync(sql, region, transaction);
+        }
+
+        private static Task InsertMany(
+            SqliteConnection connection,
+            IEnumerable<Region> regions,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return DoInsertMany(
+                connection,
+                regions,
+                Insert,
+                cancellationToken
+            );
+        }
+
+        private static async Task DoInsertMany<T>(
+            SqliteConnection connection,
+            IEnumerable<T> values,
+            Func<SqliteConnection, T, SqliteTransaction, Task> insert,
+            CancellationToken cancellationToken
+        )
+        {
+            var transaction = connection.BeginTransaction();
+
+            try
+            {
+                foreach (T v in values)
+                {
+                    await insert(connection, v, transaction);
+                }
+
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+            }
         }
 
         public async IAsyncEnumerable<Province> GetAllProvincesInRegion(
@@ -65,149 +173,120 @@ namespace Library.Caching
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            await using var db = OpenDb();
+            await using var connection = OpenConnection();
 
-            var provinces = await db.Provinces.SelectAllInRegion(region);
-            cancellationToken.ThrowIfCancellationRequested();
+            dynamic d = await connection.QueryAsync(
+                @"
+                SELECT Id, AllProvincesAreCached
+                FROM Regions
+                WHERE DisplayName = @DisplayName
+                ",
+                region
+            );
 
-            if (provinces.Any())
+            if (d.AllProvincesAreCached == 1)
             {
-                foreach (Province p in provinces)
+                string sql =
+                @"
+                SELECT
+                    p.Url as PUrl,
+                    p.DisplayName as PDisplayName,
+                    r.Url as RUrl,
+                    r.DisplayName as RDisplayName
+                FROM
+                    Provinces as p
+                INNER JOIN
+                    Regions as r
+                ON
+                    p.RegionId = r.Id
+                WHERE
+                    r.DisplayName = @DisplayName
+                ";
+
+                var cachedProvinces = await connection.QueryAsync(sql, region);
+
+                foreach (dynamic cp in cachedProvinces)
                 {
-                    yield return p;
+                    Region r = new(cp.RUrl, cp.RDisplayName);
+                    yield return new(r, cp.PUrl, cp.PDisplayName);
                 }
 
                 yield break;
             }
 
-            var newProvinces =
-                inner.GetAllProvincesInRegion(region, cancellationToken);
+            var provinces = inner.GetAllProvincesInRegion(
+                region,
+                cancellationToken
+            );
 
             List<Province> toInsert = new();
 
-            await foreach (Province p in newProvinces)
+            await foreach (Province p in provinces)
             {
                 toInsert.Add(p);
                 yield return p;
             }
 
-            await db.Provinces.InsertMany(toInsert, cancellationToken);
-        }
+            var transaction = connection.BeginTransaction();
 
-        public async IAsyncEnumerable<City> GetAllCitiesInProvince(
-            Province province,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default
-        )
-        {
-            await using var db = OpenDb();
+            string insertSql =
+            @"
+            INSERT INTO Provinces (Url, DisplayName, RegionId)
+            VALUES (@Url, @DisplayName, @RegionId)
+            ";
 
-            var cities = await db.Cities.SelectAllInProvince(province);
-            cancellationToken.ThrowIfCancellationRequested();
+            string updateSql =
+            @"
+            UPDATE Regions
+            SET AllRegionsAreCached = 1
+            WHERE Id = @RegionId
+            ";
 
-            if (cities.Any())
+            try
             {
-                foreach (City c in cities)
+                foreach (Province p in toInsert)
                 {
-                    yield return c;
+
                 }
-
-                yield break;
             }
-
-            var newCities =
-                inner.GetAllCitiesInProvince(province, cancellationToken);
-
-            List<City> toInsert = new();
-
-            await foreach (City c in newCities)
+            catch
             {
-                toInsert.Add(c);
-                yield return c;
+                await transaction.RollbackAsync(CancellationToken.None);
             }
-
-            await db.Cities.InsertMany(toInsert, cancellationToken);
         }
 
-        public async IAsyncEnumerable<FoundRecord> SearchInAll(
-            SearchCriteria criteria,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default
+        public IAsyncEnumerable<City> GetAllCitiesInProvince(
+            Province province,
+            CancellationToken cancellationToken = default
         )
         {
-            await using var db = OpenDb();
-
-            var citiesEnumerable = await db.Cities.SelectAll();
-            var cities = citiesEnumerable.ToAsyncEnumerable();
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (!citiesEnumerable.Any())
-            {
-                cities = GetAllRegions(cancellationToken)
-                    .SelectAsyncAndMerge(r => GetAllProvincesInRegion(r, cancellationToken))
-                    .SelectAsyncAndMerge(p => GetAllCitiesInProvince(p, cancellationToken));
-            }
-
-            var results = cities.SelectAsyncAndMerge(
-                c => inner.SearchInCity(c, criteria, cancellationToken)
-            );
-
-            await foreach (FoundRecord r in results)
-            {
-                yield return r;
-            }
+            throw new NotImplementedException();
         }
 
-        public async IAsyncEnumerable<FoundRecord> SearchInRegion(
+        public IAsyncEnumerable<FoundRecord> SearchInAll(
+            SearchCriteria criteria,
+            CancellationToken cancellationToken = default
+        )
+        {
+            throw new NotImplementedException();
+        }
+
+        public IAsyncEnumerable<FoundRecord> SearchInRegion(
             Region region,
             SearchCriteria criteria,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default
+            CancellationToken cancellationToken = default
         )
         {
-            await using var db = OpenDb();
-
-            var citiesEnumerable = await db.Cities.SelectAllInRegion(region);
-            var cities = citiesEnumerable.ToAsyncEnumerable();
-
-            if (!citiesEnumerable.Any())
-            {
-                cities = GetAllProvincesInRegion(region, cancellationToken)
-                    .SelectAsyncAndMerge(p => GetAllCitiesInProvince(p, cancellationToken));
-            }
-
-            var results = cities.SelectAsyncAndMerge(
-                c => inner.SearchInCity(c, criteria, cancellationToken)
-            );
-
-            await foreach (FoundRecord r in results)
-            {
-                yield return r;
-            }
+            throw new NotImplementedException();
         }
 
-        public async IAsyncEnumerable<FoundRecord> SearchInProvince(
+        public IAsyncEnumerable<FoundRecord> SearchInProvince(
             Province province,
             SearchCriteria criteria,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default
+            CancellationToken cancellationToken = default
         )
         {
-            await using var db = OpenDb();
-
-            var citiesEnumerable = await db.Cities.SelectAllInProvince(province);
-            var cities = citiesEnumerable.ToAsyncEnumerable();
-
-            if (!citiesEnumerable.Any())
-            {
-                cities = GetAllCitiesInProvince(province, cancellationToken);
-            }
-
-            var results = cities.SelectAsyncAndMerge(
-                c => inner.SearchInCity(c, criteria, cancellationToken)
-            );
-
-            await foreach (FoundRecord r in results)
-            {
-                yield return r;
-            }
+            throw new NotImplementedException();
         }
 
         public IAsyncEnumerable<FoundRecord> SearchInCity(
@@ -219,9 +298,12 @@ namespace Library.Caching
             return inner.SearchInCity(city, criteria, cancellationToken);
         }
 
-        private CacheDb OpenDb()
+        private SqliteConnection OpenConnection()
         {
-            return CacheDb.Open(connectionString);
+            SqliteConnection connection = new(connectionString);
+            connection.Open();
+
+            return connection;
         }
     }
 }

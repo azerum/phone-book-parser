@@ -21,13 +21,11 @@
     <None Remove="AutoMapper" />
     <None Remove="Dapper" />
     <None Remove="Dapper.SqlBuilder" />
-    <None Remove="Caching\DbTables\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="PhoneBook\" />
     <Folder Include="Parsing\" />
     <Folder Include="Caching\" />
-    <Folder Include="Caching\DbTables\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="AngleSharp" Version="0.16.1" />
