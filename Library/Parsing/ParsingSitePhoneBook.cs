@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using AngleSharp;
@@ -77,8 +76,6 @@ namespace Library.Parsing
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            ThrowIfArgumentIsInvalid(region);
-
             var document = await OpenDocumentOrThrow(
                 region.Url,
                 cancellationToken
@@ -103,8 +100,6 @@ namespace Library.Parsing
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            ThrowIfArgumentIsInvalid(province);
-
             var document = await OpenDocumentOrThrow(
                 province.Url,
                 cancellationToken
@@ -173,8 +168,6 @@ namespace Library.Parsing
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            ThrowIfArgumentIsInvalid(city);
-
             var document = await OpenDocumentOrThrow(
                 city.Url,
                 cancellationToken
@@ -241,60 +234,6 @@ namespace Library.Parsing
             {
                 throw new ParsingFailedException(statusCode);
             }
-        }
-
-        private const string urlPathPart = "([^/]+)";
-        private const string urlPrefix = @"http(s?)://spravnik\.com/rossiya";
-
-        private static readonly Regex regionUrlRegex =
-            new($"^{urlPrefix}/{urlPathPart}$");
-
-        private static readonly Regex provinceUrlRegex =
-            new($"^{urlPrefix}/{urlPathPart}/{urlPathPart}$");
-
-        private static readonly Regex cityUrlRegex =
-            new($"^{urlPrefix}/{urlPathPart}/{urlPathPart}/{urlPathPart}$");
-
-        private static void ThrowIfArgumentIsInvalid(Region region)
-        {
-            if (!regionUrlRegex.IsMatch(region.Url))
-            {
-                ThrowArgumentException("region");
-            }
-        }
-
-        private static void ThrowIfArgumentIsInvalid(Province province)
-        {
-            ThrowIfArgumentIsInvalid(province.Region);
-
-            if (
-                !province.Url.Contains(province.Region.Url)
-                || !provinceUrlRegex.IsMatch(province.Url)
-            )
-            {
-                ThrowArgumentException("province");
-            }
-        }
-
-        private static void ThrowIfArgumentIsInvalid(City city)
-        {
-            ThrowIfArgumentIsInvalid(city.Province);
-
-            if (
-                !city.Url.Contains(city.Province.Url)
-                || !cityUrlRegex.IsMatch(city.Url)
-            )
-            {
-                ThrowArgumentException("city");
-            }
-        }
-
-        private static void ThrowArgumentException(string parameterName)
-        {
-            throw new ArgumentException(
-                $"'{parameterName}' is not a valid {parameterName}. " +
-                "Did you create it manually?"
-            );
         }
     }
 }
