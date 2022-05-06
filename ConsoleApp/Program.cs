@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.Linq;
 using System.Threading.Tasks;
-using Dapper;
 using Library;
-using Library.Caching;
+using Library.Parsing;
 
 namespace ConsoleApp
 {
@@ -12,7 +9,19 @@ namespace ConsoleApp
     {
         public static async Task Main()
         {
+            Region region = new(
+                "http://spravnik.com/rossiya/vladimirskaya-oblast",
+                "Region"
+            );
 
+            Province province = new(
+                region,
+                "http://spravnik.com/rossiya/vladimirskaya-oblast/oblastnoj-tsyentr",
+                "Province"
+            );
+
+            ParsingSitePhoneBook phoneBook = new();
+            await phoneBook.GetAllCitiesInProvince(province).FirstAsync();
         }
     }
 }

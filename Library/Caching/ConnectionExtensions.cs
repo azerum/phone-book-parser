@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Dapper;
 using Microsoft.Data.Sqlite;
 
 namespace Library.Caching
@@ -17,7 +19,6 @@ namespace Library.Caching
 
             try
             {
-                connection.EnsureRootTableIsCreated(transaction);
                 connection.EnsureRegionsTableIsCreated(transaction);
                 connection.EnsureProvincesTableIsCreated(transaction);
                 connection.EnsureCitiesTableIfCreated(transaction);
@@ -29,36 +30,6 @@ namespace Library.Caching
                 transaction.Rollback();
                 throw;
             }
-        }
-
-        private static void EnsureRootTableIsCreated(
-            this SqliteConnection connection,
-            SqliteTransaction transaction
-        )
-        {
-            var command = connection.CreateCommand();
-            command.Transaction = transaction;
-
-            command.CommandText = "DROP TABLE IF EXISTS Root";
-            command.ExecuteNonQuery();
-
-            command.CommandText =
-            @"
-            CREATE TABLE Root(
-                Id INTEGER PRIMARY KEY CHECK (Id = 1),
-                AllRegionsAreCached INT NOT NULL
-            );
-            ";
-
-            command.ExecuteNonQuery();
-
-            command.CommandText =
-            @"
-            INSERT INTO Root (Id, AllRegionsAreCached)
-            VALUES (1, 0)
-            ";
-
-            command.ExecuteNonQuery();
         }
 
         private static void EnsureRegionsTableIsCreated(
@@ -75,7 +46,6 @@ namespace Library.Caching
                 Id INTEGER PRIMARY KEY,
                 Url TEXT NOT NULL,
                 DisplayName TEXT NOT NULL,
-                AllProvincesAreCached INT DEFAULT 0 NOT NULL,
                 UNIQUE(Url)
             )
             ";
@@ -106,7 +76,6 @@ namespace Library.Caching
                 Url TEXT NOT NULL,
                 DisplayName TEXT NOT NULL,
                 RegionId INT NOT NULL,
-                AllCitiesAreCached INT DEFAULT 0 NOT NULL,
                 UNIQUE(Url),
                 FOREIGN KEY (RegionId) REFERENCES Regions (Id)
             )
@@ -152,6 +121,184 @@ namespace Library.Caching
             ";
 
             command.ExecuteNonQuery();
+        }
+
+        public static async Task<IEnumerable<Region>> SelectAllRegions(
+            this SqliteConnection connection
+        )
+        {
+            string sql =
+            @"
+            SELECT Url, DisplayName
+            FROM Regions
+            ";
+
+            var dynamics = await connection.QueryAsync(sql);
+
+            return dynamics.Select(d => new Region(d.Url, d.DisplayName));
+        }
+
+        public static async Task<IEnumerable<Province>> SelectAllProvincesInRegion(
+            this SqliteConnection connection,
+            Region region
+        )
+        {
+            string sql =
+            @"
+            SELECT
+                p.Url as PUrl,
+                p.DisplayName as PDisplayName,
+                r.Url as RUrl,
+                r.DisplayName as RDisplayName
+            FROM
+                Provinces as p
+            INNER JOIN
+                Regions as r
+            ON
+                p.RegionId = r.Id
+            WHERE
+                r.DisplayName = @DisplayName
+            ";
+
+            var dynamics = await connection.QueryAsync(sql, region);
+
+            return dynamics.Select(d =>
+            {
+                Region r = new(d.RUrl, d.RDisplayName);
+                Province p = new(r, d.PUrl, d.PDisplayName);
+
+                return p;
+            });
+        }
+
+        public static Task Insert(
+            this SqliteConnection connection,
+            Region region,
+            SqliteTransaction? transaction = null
+        )
+        {
+            string sql =
+            @"
+            INSERT INTO Regions (Url, DisplayName)
+            VALUES (@Url, @DisplayName)
+            ";
+
+            return connection.ExecuteAsync(sql, region, transaction);
+        }
+
+        public static Task Insert(
+            this SqliteConnection connection,
+            Province province,
+            int regionId,
+            SqliteTransaction? transaction = null
+        )
+        {
+            string sql =
+            @"
+            INSERT INTO Provinces (Url, DisplayName, RegionId)
+            VALUES (@Url, @DisplayName, @RegionId)
+            ";
+
+            var param = new
+            {
+                province.Url,
+                province.DisplayName,
+                RegionId = regionId
+            };
+
+            return connection.ExecuteAsync(sql, param, transaction);
+        }
+
+        public static Task Insert(
+            this SqliteConnection connection,
+            City city,
+            int provinceId,
+            SqliteTransaction? transaction = null
+        )
+        {
+            string sql =
+            @"
+            INSERT INTO Cities (Url, DisplayName, ProvinceId)
+            VALUES (@Url, @DisplayName, @ProvinceId)
+            ";
+
+            var param = new
+            {
+                city.Url,
+                city.DisplayName,
+                ProvinceId = provinceId
+            };
+
+            return connection.ExecuteAsync(sql, param, transaction);
+        }
+
+        public static Task InsertMany(
+            this SqliteConnection connection,
+            IEnumerable<Region> regions,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return DoInsertMany(
+                connection,
+                regions,
+                Insert,
+                cancellationToken
+            );
+        }
+
+        public static Task InsertMany(
+            this SqliteConnection connection,
+            IEnumerable<Province> provinces,
+            int regionId,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return DoInsertMany(
+                connection,
+                provinces,
+                (conn, p, tx) => conn.Insert(p, regionId, tx),
+                cancellationToken
+            );
+        }
+
+        public static Task InsertMany(
+            this SqliteConnection connection,
+            IEnumerable<City> cities,
+            int provinceId,
+            CancellationToken cancellationToken = default
+        )
+        {
+            return DoInsertMany(
+                connection,
+                cities,
+                (conn, c, tx) => conn.Insert(c, provinceId, tx),
+                cancellationToken
+            );
+        }
+
+        private static async Task DoInsertMany<T>(
+            SqliteConnection connection,
+            IEnumerable<T> values,
+            Func<SqliteConnection, T, SqliteTransaction, Task> insert,
+            CancellationToken cancellationToken = default
+        )
+        {
+            var transaction = connection.BeginTransaction();
+
+            try
+            {
+                foreach (T v in values)
+                {
+                    await insert(connection, v, transaction);
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+
+                await transaction.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                await transaction.RollbackAsync(CancellationToken.None);
+            }
         }
     }
 }
