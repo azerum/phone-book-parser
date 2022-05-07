@@ -9,6 +9,8 @@
     <None Remove="AutoMapper" />
     <None Remove="Dapper" />
     <None Remove="Microsoft.Data.Sqlite" />
+    <None Remove="SqlKata" />
+    <None Remove="SqlKata.Execution" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Library\Library.csproj" />

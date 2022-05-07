@@ -4,7 +4,7 @@ namespace Library
 {
     public class Region : SearchScope, IEquatable<Region>
     {
-        public Region(string url, string displayName)
+        internal Region(string url, string displayName)
             : base(url, displayName) { }
 
         public override string ToString()

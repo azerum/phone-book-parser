@@ -1,7 +1,8 @@
-﻿using System;
+﻿using System.Linq;
 using System.Threading.Tasks;
-using Dapper;
-using Microsoft.Data.Sqlite;
+using Library;
+using Library.Caching;
+using Library.Parsing;
 
 namespace ConsoleApp
 {
@@ -9,35 +10,24 @@ namespace ConsoleApp
     {
         public static async Task Main()
         {
-            await using SqliteConnection connection =
-                new("Data Source=cache.db");
+            var phoneBook = CachingSqlitePhoneBook.Open(
+                new ParsingSitePhoneBook(),
+                "Data Source=cache.db"
+            );
 
-            connection.Open();
+            Region first;
 
-            SqlBuilder builder = new();
+            await foreach (Region r in phoneBook.GetAllRegions())
+            {
+                first = r;
 
-            var selectProvincesTemplate = builder.AddTemplate(@"
-                SELECT
-                    p.Id,
-                    p.Url as PUrl,
-                    p.DisplayName as PDisplayName,
-                    r.Url as RUrl,
-                    r.DisplayName as RDisplayName
-                FROM
-                    Provinces as p
-                INNER JOIN
-                    Regions as r
-                ON
-                    p.RegionId = r.Id
-                /**leftjoin**/
-                /**where**/
-            ");
+                await foreach (Province p in phoneBook.GetAllProvincesInRegion(first))
+                {
+                    _ = p;
+                }
 
-            builder.LeftJoin("Cities as c ON c.ProvinceId = p.Id");
-            builder.Where("c.Id IS NULL");
-
-            Console.WriteLine(selectProvincesTemplate.RawSql);
-            Console.WriteLine(selectProvincesTemplate.Parameters);
+                break;
+            }
         }
     }
 }

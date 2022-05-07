@@ -1,6 +1,6 @@
 ﻿namespace Library.Caching
 {
-    public static class Selectors
+    internal static class Mappers
     {
         public static Region ToRegion(dynamic d)
             => new(d.Url, d.DisplayName);
