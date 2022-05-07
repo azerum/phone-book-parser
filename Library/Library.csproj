@@ -21,11 +21,13 @@
     <None Remove="AutoMapper" />
     <None Remove="Dapper" />
     <None Remove="Dapper.SqlBuilder" />
+    <None Remove="Caching\DbTables\" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="PhoneBook\" />
     <Folder Include="Parsing\" />
     <Folder Include="Caching\" />
+    <Folder Include="Caching\DbTables\" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="AngleSharp" Version="0.16.1" />
@@ -33,5 +35,6 @@
     <PackageReference Include="System.Interactive.Async" Version="6.0.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="6.0.4" />
     <PackageReference Include="Dapper" Version="2.0.123" />
+    <PackageReference Include="Dapper.SqlBuilder" Version="2.0.78" />
   </ItemGroup>
 </Project>

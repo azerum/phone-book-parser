@@ -1,7 +1,7 @@
-﻿using System.Linq;
+﻿using System;
 using System.Threading.Tasks;
-using Library;
-using Library.Parsing;
+using Dapper;
+using Microsoft.Data.Sqlite;
 
 namespace ConsoleApp
 {
@@ -9,19 +9,35 @@ namespace ConsoleApp
     {
         public static async Task Main()
         {
-            Region region = new(
-                "http://spravnik.com/rossiya/vladimirskaya-oblast",
-                "Region"
-            );
+            await using SqliteConnection connection =
+                new("Data Source=cache.db");
 
-            Province province = new(
-                region,
-                "http://spravnik.com/rossiya/vladimirskaya-oblast/oblastnoj-tsyentr",
-                "Province"
-            );
+            connection.Open();
 
-            ParsingSitePhoneBook phoneBook = new();
-            await phoneBook.GetAllCitiesInProvince(province).FirstAsync();
+            SqlBuilder builder = new();
+
+            var selectProvincesTemplate = builder.AddTemplate(@"
+                SELECT
+                    p.Id,
+                    p.Url as PUrl,
+                    p.DisplayName as PDisplayName,
+                    r.Url as RUrl,
+                    r.DisplayName as RDisplayName
+                FROM
+                    Provinces as p
+                INNER JOIN
+                    Regions as r
+                ON
+                    p.RegionId = r.Id
+                /**leftjoin**/
+                /**where**/
+            ");
+
+            builder.LeftJoin("Cities as c ON c.ProvinceId = p.Id");
+            builder.Where("c.Id IS NULL");
+
+            Console.WriteLine(selectProvincesTemplate.RawSql);
+            Console.WriteLine(selectProvincesTemplate.Parameters);
         }
     }
 }

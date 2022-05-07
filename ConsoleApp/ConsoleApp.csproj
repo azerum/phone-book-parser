@@ -6,9 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Library\Library.csproj" />
+    <None Remove="AutoMapper" />
+    <None Remove="Dapper" />
+    <None Remove="Microsoft.Data.Sqlite" />
   </ItemGroup>
   <ItemGroup>
-    <None Remove="AutoMapper" />
+    <ProjectReference Include="..\Library\Library.csproj" />
   </ItemGroup>
 </Project>

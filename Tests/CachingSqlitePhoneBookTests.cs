@@ -67,6 +67,18 @@ namespace Tests
         private readonly SearchCriteria criteria = new("Иванов");
 
         [Test]
+        [Ignore(
+            "This test takes too much time to run. " +
+            "Comment out this attribute if you wish to run it"   
+        )]
+        public void SearchInAll_ReturnsSameResultsAsInner()
+        {
+            AssertMethodReturnsSameResultsAsInner(
+                phoneBook => phoneBook.SearchInAll(criteria)
+            );
+        }
+
+        [Test]
         public async Task SearchInRegion_ReturnsSameResultsAsInner()
         {
             Region region = await GetFirstRegionAsync();
