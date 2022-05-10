@@ -1,45 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Library;
-using Library.Caching;
 using Library.Parsing;
 using NUnit.Framework;
 
-namespace Tests
+namespace Tests.CachingPhoneBook
 {
-    [TestFixture]
-    public class CachingSqlitePhoneBookTests
+    public class ResultsAreSameAsParsingPhoneBook : BaseTests
     {
-        private const string dbPath = "cache.db";
-
-        private static readonly string connectionString =
-            $"Data Source={dbPath}";
-
-        private readonly ParsingSitePhoneBook inner = new();
-        protected CachingSqlitePhoneBook cachingBook;
-
-        [OneTimeSetUp]
-        public void CreateCachingPhoneBook()
-        {
-            //Truncate the DB file if it exists
-            if (File.Exists(dbPath))
-            {
-                File.WriteAllBytes(dbPath, Array.Empty<byte>());
-            }
-
-            cachingBook = CachingSqlitePhoneBook.Open(
-                inner,
-                connectionString
-            );
-        }
+        private readonly ParsingSitePhoneBook parsingBook = new();
+        protected override IPhoneBook Inner => parsingBook;
 
         [Test]
         public void GetAllRegions_ReturnsSameResultsAsInner()
         {
-            AssertMethodReturnsSameResultsAsInner(
+            AssertCachingAndParsingMethodsReturnSameResults(
                 phoneBook => phoneBook.GetAllRegions()
             );
         }
@@ -49,7 +26,7 @@ namespace Tests
         {
             Region region = await GetFirstRegionAsync();
 
-            AssertMethodReturnsSameResultsAsInner(
+            AssertCachingAndParsingMethodsReturnSameResults(
                 phoneBook => phoneBook.GetAllProvincesInRegion(region)
             );
         }
@@ -59,7 +36,7 @@ namespace Tests
         {
             Province province = await GetFirstProvinceAsync();
 
-            AssertMethodReturnsSameResultsAsInner(
+            AssertCachingAndParsingMethodsReturnSameResults(
                 phoneBook => phoneBook.GetAllCitiesInProvince(province)
             );
         }
@@ -67,13 +44,13 @@ namespace Tests
         private readonly SearchCriteria criteria = new("Иванов");
 
         [Test]
-        [Ignore(
-            "This test takes too much time to run. " +
-            "Comment out this attribute if you wish to run it"   
-        )]
+        //[Ignore(
+        //    "This test takes a lot of time to run. " +
+        //    "Comment out this attribute if you really need to run it"
+        //)]
         public void SearchInAll_ReturnsSameResultsAsInner()
         {
-            AssertMethodReturnsSameResultsAsInner(
+            AssertCachingAndParsingMethodsReturnSameResults(
                 phoneBook => phoneBook.SearchInAll(criteria)
             );
         }
@@ -83,7 +60,7 @@ namespace Tests
         {
             Region region = await GetFirstRegionAsync();
 
-            AssertMethodReturnsSameResultsAsInner(
+            AssertCachingAndParsingMethodsReturnSameResults(
                 phoneBook => phoneBook.SearchInRegion(region, criteria)
             );
         }
@@ -93,7 +70,7 @@ namespace Tests
         {
             Province province = await GetFirstProvinceAsync();
 
-            AssertMethodReturnsSameResultsAsInner(
+            AssertCachingAndParsingMethodsReturnSameResults(
                 phoneBook => phoneBook.SearchInProvince(province, criteria)
             );
         }
@@ -103,31 +80,37 @@ namespace Tests
         {
             City city = await GetFirstCityAsync();
 
-            AssertMethodReturnsSameResultsAsInner(
+            AssertCachingAndParsingMethodsReturnSameResults(
                 phoneBook => phoneBook.SearchInCity(city, criteria)
             );
         }
 
-        private void AssertMethodReturnsSameResultsAsInner<T>(
+        private void AssertCachingAndParsingMethodsReturnSameResults<T>(
             Func<IPhoneBook, IAsyncEnumerable<T>> method
         )
         {
-            var fromCaching = method(cachingBook).ToEnumerable();
-            var fromInner = method(inner).ToEnumerable();
+            var fromParsing = method(parsingBook).ToEnumerable();
 
-            Assert.That(fromCaching, Is.EquivalentTo(fromInner));
+            //Run the method twice on cachingBook to test
+            //it before (first call) and after (second call) caching
+
+            var fromCaching1 = method(cachingBook).ToEnumerable();
+            var fromCaching2 = method(cachingBook).ToEnumerable();
+
+            Assert.That(fromCaching1, Is.EquivalentTo(fromParsing));
+            Assert.That(fromCaching2, Is.EquivalentTo(fromParsing));
         }
 
         private ValueTask<Region> GetFirstRegionAsync()
         {
-            return inner.GetAllRegions().FirstAsync();
+            return parsingBook.GetAllRegions().FirstAsync();
         }
 
         private async ValueTask<Province> GetFirstProvinceAsync()
         {
             Region region = await GetFirstRegionAsync();
 
-            return await inner
+            return await parsingBook
                 .GetAllProvincesInRegion(region)
                 .FirstAsync();
         }
@@ -136,7 +119,7 @@ namespace Tests
         {
             Province province = await GetFirstProvinceAsync();
 
-            return await inner
+            return await parsingBook
                 .GetAllCitiesInProvince(province)
                 .FirstAsync();
         }

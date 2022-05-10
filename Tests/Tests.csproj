@@ -14,8 +14,13 @@
 
   <ItemGroup>
     <None Remove="Microsoft.Data.Sqlite" />
+    <None Remove="CachingSqlitePhoneBook\" />
+    <None Remove="CachingSqlitePhoneBook\ResultsSameAsParsingPhoneBookTests" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Library\Library.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="CachingPhoneBook\" />
   </ItemGroup>
 </Project>

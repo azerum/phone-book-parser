@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Library;
 using Library.Caching;
 using Library.Parsing;
@@ -15,13 +14,14 @@ namespace ConsoleApp
                 "Data Source=cache.db"
             );
 
-            Region first;
-
             await foreach (Region r in phoneBook.GetAllRegions())
             {
-                first = r;
+                await foreach (Province p in phoneBook.GetAllProvincesInRegion(r))
+                {
+                    _ = p;
+                }
 
-                await foreach (Province p in phoneBook.GetAllProvincesInRegion(first))
+                await foreach (Province p in phoneBook.GetAllProvincesInRegion(r))
                 {
                     _ = p;
                 }

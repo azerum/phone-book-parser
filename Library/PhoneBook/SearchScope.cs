@@ -7,7 +7,7 @@ namespace Library
         public string Url { get; }
         public string DisplayName { get; }
 
-        internal SearchScope(string url, string displayName)
+        public SearchScope(string url, string displayName)
         {
             Url = url;
             DisplayName = displayName;

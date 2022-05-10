@@ -6,7 +6,7 @@ namespace Library
     {
         public Province Province { get; }
 
-        internal City(Province province, string url, string displayName)
+        public City(Province province, string url, string displayName)
             : base(url, displayName)
         {
             Province = province;
