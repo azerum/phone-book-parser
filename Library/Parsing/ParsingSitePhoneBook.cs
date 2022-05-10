@@ -23,7 +23,8 @@ namespace Library.Parsing
         private const string citiesSelector =
             ".outSelectTown > div:nth-child(3) > a";
 
-        private const string searchFormSelector = "form";
+        //'serchForm' typo is intended as it is used on the site
+        private const string searchFormSelector = "serchForm form"; 
 
         private const string resultsRowsSelector =
             ".res > table > tbody > tr";
@@ -202,10 +203,10 @@ namespace Library.Parsing
                 string fullName = r.QuerySelector("td:nth-child(2)")!.TextContent;
                 string address = r.QuerySelector("td:nth-child(3)")!.TextContent;
 
-                string[] nameParts = fullName.Split(' ');
+                string[] nameParts = fullName.Split(' ', 2);
 
                 string surname = nameParts[0];
-                string initials = string.Join(' ', nameParts[1..^0]);
+                string initials = nameParts[1];
 
                 yield return new FoundRecord(
                     surname,

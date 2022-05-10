@@ -14,7 +14,7 @@ namespace Tests.CachingPhoneBook
         protected override IPhoneBook Inner => parsingBook;
 
         [Test]
-        public void GetAllRegions_ReturnsSameResultsAsInner()
+        public void GetAllRegions()
         {
             AssertCachingAndParsingMethodsReturnSameResults(
                 phoneBook => phoneBook.GetAllRegions()
@@ -22,7 +22,7 @@ namespace Tests.CachingPhoneBook
         }
 
         [Test]
-        public async Task GetAllProvincesInRegion_ReturnsSameResultsAsInner()
+        public async Task GetAllProvincesInRegion()
         {
             Region region = await GetFirstRegionAsync();
 
@@ -32,7 +32,7 @@ namespace Tests.CachingPhoneBook
         }
 
         [Test]
-        public async Task GetAllCitiesInProvince_ReturnsSameResultsAsInner()
+        public async Task GetAllCitiesInProvince()
         {
             Province province = await GetFirstProvinceAsync();
 
@@ -44,11 +44,12 @@ namespace Tests.CachingPhoneBook
         private readonly SearchCriteria criteria = new("Иванов");
 
         [Test]
-        //[Ignore(
-        //    "This test takes a lot of time to run. " +
-        //    "Comment out this attribute if you really need to run it"
-        //)]
-        public void SearchInAll_ReturnsSameResultsAsInner()
+        [Ignore(
+            "This test takes a lot of time to run. " +
+            "Comment out this attribute if you really need to run it"
+        )]
+        //2022-05-10 15:56 UTC+3: Test passed
+        public void SearchInAll()
         {
             AssertCachingAndParsingMethodsReturnSameResults(
                 phoneBook => phoneBook.SearchInAll(criteria)
@@ -56,7 +57,7 @@ namespace Tests.CachingPhoneBook
         }
 
         [Test]
-        public async Task SearchInRegion_ReturnsSameResultsAsInner()
+        public async Task SearchInRegion()
         {
             Region region = await GetFirstRegionAsync();
 
@@ -66,7 +67,7 @@ namespace Tests.CachingPhoneBook
         }
 
         [Test]
-        public async Task SearchInProvince_ReturnsSameResultsAsInner()
+        public async Task SearchInProvince()
         {
             Province province = await GetFirstProvinceAsync();
 
@@ -76,7 +77,7 @@ namespace Tests.CachingPhoneBook
         }
 
         [Test]
-        public async Task SearchInCity_ReturnsSameResultsAsInner()
+        public async Task SearchInCity()
         {
             City city = await GetFirstCityAsync();
 
