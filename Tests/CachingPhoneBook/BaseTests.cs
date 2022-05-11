@@ -14,10 +14,8 @@ namespace Tests.CachingPhoneBook
 
         protected CachingSqlitePhoneBook cachingBook;
 
-        protected abstract IPhoneBook Inner { get; }
-
         [SetUp]
-        public void CreateCachingBook()
+        public void CreateNewCachingBook()
         {
             if (File.Exists(dbPath))
             {
@@ -25,9 +23,11 @@ namespace Tests.CachingPhoneBook
             }
 
             cachingBook = CachingSqlitePhoneBook.Open(
-                Inner,
+                GetInner(),
                 connectionString
             );
         }
+
+        protected abstract IPhoneBook GetInner();
     }
 }

@@ -8,7 +8,7 @@ using NUnit.Framework;
 
 namespace Tests.CachingPhoneBook
 {
-    public class CachingWorks : BaseTests
+    public class CachingTests : BaseTests
     {
         class FakePhoneBook : IPhoneBook
         {
@@ -96,13 +96,18 @@ namespace Tests.CachingPhoneBook
         }
 
         private readonly FakePhoneBook fakePhoneBook = new();
-        protected override IPhoneBook Inner => fakePhoneBook;
+
+        protected override IPhoneBook GetInner()
+            => fakePhoneBook;
 
         [Test]
         public async Task DoesNotCallAnyMethodsOfInnerExceptSearchInCityMoreThanOnce()
         {
             foreach (var method in AllMethodsExceptSearchInCity())
             {
+                //Call the method twice to test its behaviour before and
+                //after caching
+
                 await method(cachingBook).Consume();
                 await method(cachingBook).Consume();
             }
