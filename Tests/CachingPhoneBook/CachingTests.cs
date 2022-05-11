@@ -95,10 +95,13 @@ namespace Tests.CachingPhoneBook
             }
         }
 
-        private readonly FakePhoneBook fakePhoneBook = new();
+        private FakePhoneBook fakePhoneBook;
 
-        protected override IPhoneBook GetInner()
-            => fakePhoneBook;
+        protected override IPhoneBook GetInnerForNextTest()
+        {
+            fakePhoneBook = new();
+            return fakePhoneBook;
+        }
 
         [Test]
         public async Task DoesNotCallAnyMethodsOfInnerExceptSearchInCityMoreThanOnce()

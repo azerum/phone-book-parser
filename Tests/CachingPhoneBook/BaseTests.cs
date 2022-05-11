@@ -23,11 +23,11 @@ namespace Tests.CachingPhoneBook
             }
 
             cachingBook = CachingSqlitePhoneBook.Open(
-                GetInner(),
+                GetInnerForNextTest(),
                 connectionString
             );
         }
 
-        protected abstract IPhoneBook GetInner();
+        protected abstract IPhoneBook GetInnerForNextTest();
     }
 }

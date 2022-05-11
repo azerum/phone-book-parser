@@ -170,9 +170,9 @@ namespace Tests.CachingPhoneBook
         private FakePhoneBook fakePhoneBook;
         private readonly SearchCriteria criteria = new("Иванов");
 
-        protected override IPhoneBook GetInner()
+        protected override IPhoneBook GetInnerForNextTest()
         {
-            fakePhoneBook = new FakePhoneBook();
+            fakePhoneBook = new();
             return fakePhoneBook;
         }
 
