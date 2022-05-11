@@ -7,7 +7,7 @@ using NUnit.Framework;
 namespace Tests.CachingPhoneBook
 {
     [TestFixture]
-    public abstract class BaseTests
+    public abstract class TestsBase
     {
         private const string dbPath = "cache.db";
         private static readonly string connectionString = $"Data Source={dbPath}";

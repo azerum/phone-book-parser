@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -7,7 +8,7 @@ using Microsoft.Data.Sqlite;
 
 namespace Library.Caching
 {
-    public class CachingSqlitePhoneBook : IPhoneBook
+    public sealed class CachingSqlitePhoneBook : Disposable,  IPhoneBook
     {
         private readonly IPhoneBook inner;
         private readonly string connectionString;
@@ -40,10 +41,20 @@ namespace Library.Caching
             return CacheDb.OpenAsync(connectionString);
         }
 
+        protected override void CleanUpManagedResources()
+        {
+            if (inner is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+        }
+
         public async IAsyncEnumerable<Region> GetAllRegions(
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            ThrowIfDisposed();
+
             using var db = await OpenDb();
 
             if (await db.AreAllRegionsCached(cancellationToken))
@@ -75,6 +86,8 @@ namespace Library.Caching
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            ThrowIfDisposed();
+
             using var db = await OpenDb();
             var regionInfo = await db.SelectRegionInfo(region, cancellationToken);
 
@@ -123,6 +136,8 @@ namespace Library.Caching
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            ThrowIfDisposed();
+
             using var db = await OpenDb();
 
             var provinceInfo =
@@ -173,6 +188,8 @@ namespace Library.Caching
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            ThrowIfDisposed();
+
             using var db = await OpenDb();
 
             await EnsureAllRegionsAreCached(db, cancellationToken);
@@ -260,6 +277,8 @@ namespace Library.Caching
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            ThrowIfDisposed();
+
             using var db = await OpenDb();
 
             var regionInfo = await db.SelectRegionInfo(region, cancellationToken);
@@ -296,6 +315,8 @@ namespace Library.Caching
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            ThrowIfDisposed();
+
             using var db = await OpenDb();
 
             var provinceInfo = await db
@@ -386,6 +407,7 @@ namespace Library.Caching
             CancellationToken cancellationToken = default
         )
         {
+            ThrowIfDisposed();
             return inner.SearchInCity(city, criteria, cancellationToken);
         }
     }

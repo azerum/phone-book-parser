@@ -5,10 +5,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Library;
 using NUnit.Framework;
+using Tests.Helpers;
 
 namespace Tests.CachingPhoneBook
 {
-    public class ResultsCorrectnessTests : BaseTests
+    public class ResultsCorrectnessTests : TestsBase
     {
         class FakePhoneBook : IPhoneBook
         {

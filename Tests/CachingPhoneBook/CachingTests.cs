@@ -5,10 +5,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Library;
 using NUnit.Framework;
+using Tests.Helpers;
 
 namespace Tests.CachingPhoneBook
 {
-    public class CachingTests : BaseTests
+    public class CachingTests : TestsBase
     {
         class FakePhoneBook : IPhoneBook
         {
@@ -106,7 +107,7 @@ namespace Tests.CachingPhoneBook
         [Test]
         public async Task DoesNotCallAnyMethodsOfInnerExceptSearchInCityMoreThanOnce()
         {
-            foreach (var method in AllMethodsExceptSearchInCity())
+            foreach (var method in PhoneBookMethods.AllExceptSearchInCity())
             {
                 //Call the method twice to test its behaviour before and
                 //after caching
@@ -123,28 +124,6 @@ namespace Tests.CachingPhoneBook
                     $"{pair.Key} was called {pair.Value} time(s)"
                 );
             }
-        }
-
-        public static List<Func<IPhoneBook, IAsyncEnumerable<object>>>
-        AllMethodsExceptSearchInCity()
-        {
-            List<Func<IPhoneBook, IAsyncEnumerable<object>>> methods = new();
-
-            Region region = new("https://example.com", "Dummy");
-            Province province = new(region, "https://example.com/p", "Dummy");
-            City city = new(province, "https://example.com/p/c", "Dummy");
-
-            SearchCriteria criteria = new("Dummy");
-
-            methods.Add(phoneBook => phoneBook.GetAllRegions());
-            methods.Add(phoneBook => phoneBook.GetAllProvincesInRegion(region));
-            methods.Add(phoneBook => phoneBook.GetAllCitiesInProvince(province));
-
-            methods.Add(phoneBook => phoneBook.SearchInAll(criteria));
-            methods.Add(phoneBook => phoneBook.SearchInRegion(region, criteria));
-            methods.Add(phoneBook => phoneBook.SearchInProvince(province, criteria));
-
-            return methods;
         }
     }
 }

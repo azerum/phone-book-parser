@@ -10,7 +10,7 @@ using AngleSharp.Io;
 
 namespace Library.Parsing
 {
-    public class ParsingSitePhoneBook : IPhoneBook
+    public sealed class ParsingSitePhoneBook : IPhoneBook, IDisposable
     {
         private const string siteHostName = "spravnik.com";
         private const string regionsPageUrl = "https://spravnik.com/rossiya";
@@ -56,10 +56,33 @@ namespace Library.Parsing
             context = BrowsingContext.New(config);
         }
 
+        private bool disposed = false;
+
+        public void Dispose()
+        {
+            if (disposed)
+            {
+                return;
+            }
+
+            disposed = true;
+            context.Dispose();
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (disposed)
+            {
+                throw new ObjectDisposedException("this");
+            }
+        }
+
         public async IAsyncEnumerable<Region> GetAllRegions(
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            ThrowIfDisposed();
+
             var document = await OpenDocumentOrThrow(
                 regionsPageUrl,
                 cancellationToken
@@ -84,6 +107,8 @@ namespace Library.Parsing
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            ThrowIfDisposed();
+
             var document = await OpenDocumentOrThrow(
                 region.Url,
                 cancellationToken
@@ -108,6 +133,8 @@ namespace Library.Parsing
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
+            ThrowIfDisposed();
+
             var document = await OpenDocumentOrThrow(
                 province.Url,
                 cancellationToken
@@ -176,13 +203,9 @@ namespace Library.Parsing
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            var document = await OpenDocumentOrThrow(
-                city.Url,
-                cancellationToken
-            );
+            ThrowIfDisposed();
 
-            var form = document
-                .QuerySelector<IHtmlFormElement>(searchFormSelector);
+            var form = await GetSearchForm(city, cancellationToken);
 
             if (form == null)
             {
@@ -222,6 +245,31 @@ namespace Library.Parsing
                     cancellationToken
                 );
             }
+        }
+
+        private IHtmlFormElement? searchForm = null;
+
+        private async Task<IHtmlFormElement?> GetSearchForm(
+            City city,
+            CancellationToken cancellationToken
+        )
+        {
+            if (searchForm == null)
+            {
+                var document = await OpenDocumentOrThrow(
+                    city.Url,
+                    cancellationToken
+                );
+
+                searchForm = document
+                    .QuerySelector<IHtmlFormElement>(searchFormSelector);
+            }
+            else
+            {
+                searchForm.Action = $"{city.Url}#menu";
+            }
+
+            return searchForm;
         }
 
         private static FoundRecord ParseResultsRow(

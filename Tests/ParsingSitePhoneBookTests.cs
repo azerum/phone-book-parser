@@ -2,16 +2,23 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using AngleSharp.Dom;
 using Library;
 using Library.Parsing;
 using NUnit.Framework;
+using Tests.Helpers;
 
 namespace Tests
 {
+    [TestFixture]
     public class ParsingSitePhoneBookTests
     {
-        private readonly ParsingSitePhoneBook phoneBook = new();
+        private ParsingSitePhoneBook phoneBook;
+
+        [SetUp]
+        public void CreateNewPhoneBook()
+        {
+            phoneBook = new();
+        }
 
         [Test]
         public async Task SearchInCity_HandlesPagination()
@@ -22,15 +29,7 @@ namespace Tests
 			var actual = await phoneBook.SearchInCity(city, criteria)
 				.ToListAsync();
 
-			try
-            {
-				Assert.That(actual, Is.EquivalentTo(expected));
-			}
-			catch (Exception e)
-            {
-				;
-				throw;
-            } 
+            Assert.That(actual, Is.EquivalentTo(expected));
 
             static (City, SearchCriteria) CityAndCriteria()
             {
@@ -201,6 +200,26 @@ namespace Tests
 
                 return records;
 			}
+        }
+
+        [Test]
+        public async Task SearchInCity_MultipleCalls()
+        {
+            await SearchInCity_HandlesPagination();
+            await SearchInCity_HandlesPagination();
+        }
+
+        [Test]
+        public void AllMethodsThrowIfDisposed(
+            [ValueSource(typeof(PhoneBookMethods), "All")]
+            Func<IPhoneBook, IAsyncEnumerable<object>> method
+        )
+        {
+            phoneBook.Dispose();
+
+            Assert.ThrowsAsync<ObjectDisposedException>(
+                () => method(phoneBook).Consume()
+            );
         }
     }
 }
