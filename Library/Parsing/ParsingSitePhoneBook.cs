@@ -24,10 +24,13 @@ namespace Library.Parsing
             ".outSelectTown > div:nth-child(3) > a";
 
         //'serchForm' typo is intended as it is used on the site
-        private const string searchFormSelector = "serchForm form"; 
+        private const string searchFormSelector = ".serchForm form";
 
         private const string resultsRowsSelector =
             ".res > table > tbody > tr";
+
+        private const string nextResultsPageButtonSelector =
+            ".res > a:last-child";
 
         private readonly IBrowsingContext context;
 
@@ -186,38 +189,62 @@ namespace Library.Parsing
                 yield break;
             }
 
-            var resultsPage = await form.SubmitAsync(new
+            IDocument currentPage = await form.SubmitAsync(new
             {
                 soname = criteria.Surname,
                 io = criteria.Initials
             });
 
-            ThrowIfBadStatusCode(resultsPage);
+            ThrowIfBadStatusCode(currentPage);
 
-            var rows = resultsPage
-                .QuerySelectorAll<IHtmlTableRowElement>(resultsRowsSelector);
-
-            foreach (IHtmlTableRowElement r in rows)
+            while (true)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                var rows = currentPage
+                    .QuerySelectorAll<IHtmlTableRowElement>(resultsRowsSelector);
 
-                string phoneNumber = r.QuerySelector("td")!.TextContent;
-                string fullName = r.QuerySelector("td:nth-child(2)")!.TextContent;
-                string address = r.QuerySelector("td:nth-child(3)")!.TextContent;
+                foreach (IHtmlTableRowElement r in rows)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    yield return ParseResultsRow(r, city);
+                }
 
-                string[] nameParts = fullName.Split(' ', 2);
+                var nextPageButton = currentPage.QuerySelector<IHtmlAnchorElement>(
+                    nextResultsPageButtonSelector
+                )!;
 
-                string surname = nameParts[0];
-                string initials = nameParts[1];
+                if (nextPageButton.ClassList.Contains("disabled"))
+                {
+                    yield break;
+                }
 
-                yield return new FoundRecord(
-                    surname,
-                    initials,
-                    phoneNumber,
-                    address,
-                    city
+                currentPage = await OpenDocumentOrThrow(
+                    nextPageButton.Href,
+                    cancellationToken
                 );
             }
+        }
+
+        private static FoundRecord ParseResultsRow(
+            IHtmlTableRowElement row,
+            City city
+        )
+        {
+            string phoneNumber = row.Children[0].TextContent;
+            string fullName = row.Children[1].TextContent;
+            string address = row.Children[2].TextContent;
+
+            string[] nameParts = fullName.Split(' ', 2);
+
+            string surname = nameParts[0];
+            string initials = nameParts[1];
+
+            return new FoundRecord(
+                surname,
+                initials,
+                phoneNumber,
+                address,
+                city
+            );
         }
 
         private async Task<IDocument> OpenDocumentOrThrow(

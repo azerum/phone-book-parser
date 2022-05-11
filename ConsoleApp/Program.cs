@@ -1,9 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using AngleSharp;
+using AngleSharp.Dom;
+using AngleSharp.Html.Dom;
+using AngleSharp.Io;
 using Library;
 
 namespace Experiments
@@ -15,7 +20,7 @@ namespace Experiments
             CancellationToken cancellationToken = default
         );
 
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
 
         }
