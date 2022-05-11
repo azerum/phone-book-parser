@@ -1,33 +1,23 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Library;
-using Library.Caching;
-using Library.Parsing;
 
-namespace ConsoleApp
+namespace Experiments
 {
     class Program
     {
-        public static async Task Main()
+        delegate IAsyncEnumerable<string> SearchFunc(
+            SearchCriteria criteria,
+            CancellationToken cancellationToken = default
+        );
+
+        public static void Main(string[] args)
         {
-            var phoneBook = CachingSqlitePhoneBook.Open(
-                new ParsingSitePhoneBook(),
-                "Data Source=cache.db"
-            );
 
-            await foreach (Region r in phoneBook.GetAllRegions())
-            {
-                await foreach (Province p in phoneBook.GetAllProvincesInRegion(r))
-                {
-                    _ = p;
-                }
-
-                await foreach (Province p in phoneBook.GetAllProvincesInRegion(r))
-                {
-                    _ = p;
-                }
-
-                break;
-            }
         }
     }
 }

@@ -31,7 +31,13 @@ namespace Library.Parsing
 
         private readonly IBrowsingContext context;
 
-        public ParsingSitePhoneBook(int msBetweenRequests = 150)
+        public ParsingSitePhoneBook()
+            : this(new RateLimitingRequester(TimeSpan.FromMilliseconds(150)))
+        {
+
+        }
+
+        public ParsingSitePhoneBook(IRequester requester)
         {
             LoaderOptions loaderOptions = new()
             {
@@ -42,11 +48,7 @@ namespace Library.Parsing
             var config = Configuration.Default
                 .WithDefaultLoader(loaderOptions);
 
-            config = config.WithRequester(
-                new RateLimitingRequester(
-                    TimeSpan.FromMilliseconds(msBetweenRequests)
-                )
-            );
+            config = config.WithRequester(requester);
 
             context = BrowsingContext.New(config);
         }
