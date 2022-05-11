@@ -10,7 +10,7 @@ using AngleSharp.Io;
 
 namespace Library.Parsing
 {
-    public sealed class ParsingSitePhoneBook : IPhoneBook, IDisposable
+    public sealed class ParsingSitePhoneBook : Disposable, IPhoneBook
     {
         private const string siteHostName = "spravnik.com";
         private const string regionsPageUrl = "https://spravnik.com/rossiya";
@@ -56,25 +56,9 @@ namespace Library.Parsing
             context = BrowsingContext.New(config);
         }
 
-        private bool disposed = false;
-
-        public void Dispose()
+        protected override void CleanUpManagedResources()
         {
-            if (disposed)
-            {
-                return;
-            }
-
-            disposed = true;
             context.Dispose();
-        }
-
-        private void ThrowIfDisposed()
-        {
-            if (disposed)
-            {
-                throw new ObjectDisposedException("this");
-            }
         }
 
         public async IAsyncEnumerable<Region> GetAllRegions(
