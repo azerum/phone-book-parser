@@ -55,9 +55,14 @@ namespace Tests
                 return (city, criteria);
             }
 
-			//Those are manually fetches records that was parsed using
-			//'parse-results-page.js' script in browser. Pretty hacky,
-			//but we need to test our parser somehow
+			//Those are manually fetched records. Note that I didn't write
+            //all those 'records.Add()' statements by hand. Instead, I have
+            //used 'Helpers/parse-results-page.js' script pasted in browser
+            //console with resuls page open. The script parses page and
+            //generates C# statements. This script might be useful later on
+
+            //Pretty hacky, but we need to test the parser somehow
+
             static List<FoundRecord> ExpectedRecords(City city)
             {
                 List<FoundRecord> records = new();
@@ -212,13 +217,13 @@ namespace Tests
         [Test]
         public void AllMethodsThrowIfDisposed(
             [ValueSource(typeof(PhoneBookMethods), "All")]
-            Func<IPhoneBook, IAsyncEnumerable<object>> method
+            MethodToTest method
         )
         {
             phoneBook.Dispose();
 
             Assert.ThrowsAsync<ObjectDisposedException>(
-                () => method(phoneBook).Consume()
+                () => method.Call(phoneBook).Consume()
             );
         }
     }

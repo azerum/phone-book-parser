@@ -1,15 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using Library;
 
 namespace Tests.Helpers
 {
     public static class PhoneBookMethods
     {
-        public static IEnumerable<Func<IPhoneBook, IAsyncEnumerable<object>>> All()
+        public static IEnumerable<MethodToTest> All()
         {
-            List<Func<IPhoneBook, IAsyncEnumerable<object>>> methods = new();
+            List<MethodToTest> methods = new();
+
+            CancellationToken none = CancellationToken.None;
 
             Region region = new("https://example.com", "Dummy");
             Province province = new(region, "https://example.com/p", "Dummy");
@@ -17,23 +19,41 @@ namespace Tests.Helpers
 
             SearchCriteria criteria = new("Dummy");
 
-            methods.Add(phoneBook => phoneBook.GetAllRegions());
-            methods.Add(phoneBook => phoneBook.GetAllProvincesInRegion(region));
-            methods.Add(phoneBook => phoneBook.GetAllCitiesInProvince(province));
+            methods.Add(new(
+                phoneBook => phoneBook.GetAllRegions(none)
+            ));
 
-            methods.Add(phoneBook => phoneBook.SearchInAll(criteria));
-            methods.Add(phoneBook => phoneBook.SearchInRegion(region, criteria));
-            methods.Add(phoneBook => phoneBook.SearchInProvince(province, criteria));
-            methods.Add(phoneBook => phoneBook.SearchInCity(city, criteria));
+            methods.Add(new(
+                phoneBook => phoneBook.GetAllProvincesInRegion(region, none)
+            ));
+
+            methods.Add(new(
+                phoneBook => phoneBook.GetAllCitiesInProvince(province, none)
+            ));
+
+            methods.Add(new(
+                phoneBook => phoneBook.SearchInAll(criteria, none)
+            ));
+
+            methods.Add(new(
+                phoneBook => phoneBook.SearchInRegion(region, criteria, none)
+            ));
+
+            methods.Add(new(
+                phoneBook => phoneBook.SearchInProvince(province, criteria, none)
+            ));
+
+            methods.Add(new(
+                phoneBook => phoneBook.SearchInCity(city, criteria, none)
+            ));
 
             return methods;
         }
 
-        public static IEnumerable<Func<IPhoneBook, IAsyncEnumerable<object>>>
-        AllExceptSearchInCity()
+        public static IEnumerable<MethodToTest> AllExceptSearchInCity()
         {
             return All().Where(
-                m => m.Method.Name != nameof(IPhoneBook.SearchInCity)
+                m => m.Name != nameof(IPhoneBook.SearchInCity)
             );
         }
     }

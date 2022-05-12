@@ -112,8 +112,8 @@ namespace Tests.CachingPhoneBook
                 //Call the method twice to test its behaviour before and
                 //after caching
 
-                await method(cachingBook).Consume();
-                await method(cachingBook).Consume();
+                await method.Call(cachingBook).Consume();
+                await method.Call(cachingBook).Consume();
             }
 
             foreach (var pair in fakePhoneBook.CallsCountExceptSearchInCity)

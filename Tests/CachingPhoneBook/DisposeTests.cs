@@ -88,13 +88,13 @@ namespace Tests.CachingPhoneBook
         [Test]
         public void AllMethodsThrowIfDisposed(
             [ValueSource(typeof(PhoneBookMethods), "All")]
-            Func<IPhoneBook, IAsyncEnumerable<object>> method
+            MethodToTest method
         )
         {
             cachingBook.Dispose();
 
             Assert.ThrowsAsync<ObjectDisposedException>(
-                () => method(cachingBook).Consume()
+                () => method.Call(cachingBook).Consume()
             );
         }
 
